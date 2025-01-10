@@ -1,90 +1,203 @@
-#include <Arduino.h>
-int L1 = 23;
-int L2 = 19;
-int L3 = 18;
-int L4 = 5;
-int L5 = 17;
-int L6 = 16;
-int L7 = 4;
-int L8 = 0;
-int potPin = 36;
-void setup(){
-    pinMode (L1,OUTPUT);
-    pinMode (L2,OUTPUT);
-    pinMode (L3,OUTPUT);
-    pinMode (L4,OUTPUT);
-    pinMode (L5,OUTPUT);
-    pinMode (L6,OUTPUT);
-    pinMode (L7,OUTPUT);
-    pinMode (L8,OUTPUT);
+#include <Arduino.h> 
+#include <LiquidCrystal_I2C.h>
+
+#define I2C_SDA 21
+#define I2C_SCL 22
+#define Switch  15
+#define Led1 23
+#define Led2 19
+#define Led3 18
+#define Led4 5
+#define Led5 17
+#define Led6 16
+#define Led7 4
+#define Led8 0
+
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
+
+int menuIndex = 0;  
+const int totalMenus = 6;  
+
+int leds[] = {Led1, Led2, Led3, Led4, Led5, Led6, Led7, Led8};
+
+void updateLCD() {
+  lcd.clear();
+  
+  switch(menuIndex) {
+    case 0:
+      lcd.setCursor(0, 0);
+      lcd.print("Menu 1");
+      break;
+    case 1:
+      lcd.setCursor(0, 0);
+      lcd.print("Menu 2");
+      break;
+    case 2:
+      lcd.setCursor(0, 0);
+      lcd.print("Menu 3");
+      break;
+    case 3:
+      lcd.setCursor(0, 0);
+      lcd.print("Menu 4");
+      break;
+    case 4:
+      lcd.setCursor(0, 0);
+      lcd.print("Menu 5");
+      break;
+    case 5:
+      lcd.setCursor(0, 0);
+      lcd.print("Menu 6");
+      break;
+  }
 }
+
+// ฟังก์ชันเปิด LED ทั้งหมด
+void ledsOn() {
+  for (int i = 0; i < 8; i++) {
+    digitalWrite(leds[i], HIGH);
+  }
+}
+
+// ฟังก์ชันปิด LED ทั้งหมด
+void ledsOff() {
+  for (int i = 0; i < 8; i++) {
+    digitalWrite(leds[i], LOW);
+  }
+}
+
+void ledsBlinkAlternating() {
+  static unsigned long previousMillis = 0;
+  unsigned long currentMillis = millis();
+  const long interval = 500; 
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+
+    // สลับการเปิด/ปิด LED คู่/คี่
+    static bool toggle = false;  
+
+    if (toggle) {
+      // เปิด LED คู่ (LED1, LED3, LED5, LED7) และปิด LED คี่ (LED2, LED4, LED6, LED8)
+      digitalWrite(Led1, HIGH);
+      digitalWrite(Led2, LOW);
+      digitalWrite(Led3, HIGH);
+      digitalWrite(Led4, LOW);
+      digitalWrite(Led5, HIGH);
+      digitalWrite(Led6, LOW);
+      digitalWrite(Led7, HIGH);
+      digitalWrite(Led8, LOW);
+    } else {
+      // เปิด LED คี่ (LED2, LED4, LED6, LED8) และปิด LED คู่ (LED1, LED3, LED5, LED7)
+      digitalWrite(Led1, LOW);
+      digitalWrite(Led2, HIGH);
+      digitalWrite(Led3, LOW);
+      digitalWrite(Led4, HIGH);
+      digitalWrite(Led5, LOW);
+      digitalWrite(Led6, HIGH);
+      digitalWrite(Led7, LOW);
+      digitalWrite(Led8, HIGH);
+    }
+
+    toggle = !toggle;  
+  }
+}
+
+// ฟังก์ชันสว่างทีละดวงจาก LED1 ถึง LED8
+void ledsOneByOne() {
+  for (int i = 0; i < 8; i++) {
+    digitalWrite(leds[i], HIGH);
+    delay(200); 
+    digitalWrite(leds[i], LOW);
+  }
+}
+
+// ฟังก์ชันเปิด LED เป็นคู่ (2 ดวงพร้อมกัน)
+void ledsOnInPairs() {
+  for (int i = 0; i < 8; i += 2) {
+    digitalWrite(leds[i], HIGH);
+    digitalWrite(leds[i + 1], HIGH);
+    delay(500); 
+    digitalWrite(leds[i], LOW);
+    digitalWrite(leds[i + 1], LOW);
+  }
+}
+// ฟังก์ชันสว่างจาก LED1 ถึง LED8 แล้วดับจาก LED8 ถึง LED1
+void ledsSweep() {
+ 
+  for (int i = 0; i < 8; i++) {
+    digitalWrite(leds[i], HIGH);
+    delay(200); 
+  }
+  
+  
+  for (int i = 7; i >= 0; i--) {
+    digitalWrite(leds[i], LOW);
+    delay(200); 
+  }
+}
+// ฟังก์ชันกระพริบ LED ทั้งหมดพร้อมกัน
+void ledsBlinkAll() {
+  static unsigned long lastMillis = 0;
+  static bool ledState = false;
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - lastMillis >= 500) {  
+    ledState = !ledState; 
+
+    for (int i = 0; i < 8; i++) {
+      digitalWrite(leds[i], ledState ? HIGH : LOW);
+    }
+
+    lastMillis = currentMillis;
+  }
+}
+
+void setup() {
+  lcd.init(I2C_SDA, I2C_SCL); 
+  lcd.backlight();
+  
+  for (int i = 0; i < 8; i++) {
+    pinMode(leds[i], OUTPUT);
+  }
+
+  updateLCD();  
+  pinMode(Switch, INPUT_PULLUP);  
+}
+
 void loop() {
-    int potValue = analogRead(potPin); // อ่านค่าจาก potentiometer
-    int range = map(potValue, 0, 4095, 0, 4000); // แปลงค่าจาก potentiometer เป็นช่วง 0-4000
+  static bool lastSwitchState = HIGH;  
+  bool switchState = digitalRead(Switch); 
+  
 
-    // ปิดไฟทั้งหมดก่อน
-    digitalWrite(L1, LOW);
-    digitalWrite(L2, LOW);
-    digitalWrite(L3, LOW);
-    digitalWrite(L4, LOW);
-    digitalWrite(L5, LOW);
-    digitalWrite(L6, LOW);
-    digitalWrite(L7, LOW);
-    digitalWrite(L8, LOW);
+  if (switchState == LOW && lastSwitchState == HIGH) {
+    menuIndex = (menuIndex + 1) % totalMenus;  
+    updateLCD();  
+    delay(50);
+  }
 
-    // เปิดไฟตามค่า range
-    if (range >= 0 && range < 500) {
-        digitalWrite(L1, HIGH);
-    }
-    else if (range >= 500 && range < 1000) {
-        digitalWrite(L1, HIGH);
-        digitalWrite(L2, HIGH);
-    }
-    else if (range >= 1000 && range < 1500) {
-        digitalWrite(L1, HIGH);
-        digitalWrite(L2, HIGH);
-        digitalWrite(L3, HIGH);
-    }
-    else if (range >= 1500 && range < 2000) {
-        digitalWrite(L1, HIGH);
-        digitalWrite(L2, HIGH);
-        digitalWrite(L3, HIGH);
-        digitalWrite(L4, HIGH);
-    }
-    else if (range >= 2000 && range < 2500) {
-        digitalWrite(L1, HIGH);
-        digitalWrite(L2, HIGH);
-        digitalWrite(L3, HIGH);
-        digitalWrite(L4, HIGH);
-        digitalWrite(L5, HIGH);
-    }
-    else if (range >= 2500 && range < 3000) {
-        digitalWrite(L1, HIGH);
-        digitalWrite(L2, HIGH);
-        digitalWrite(L3, HIGH);
-        digitalWrite(L4, HIGH);
-        digitalWrite(L5, HIGH);
-        digitalWrite(L6, HIGH);
-    }
-    else if (range >= 3000 && range < 3500) {
-        digitalWrite(L1, HIGH);
-        digitalWrite(L2, HIGH);
-        digitalWrite(L3, HIGH);
-        digitalWrite(L4, HIGH);
-        digitalWrite(L5, HIGH);
-        digitalWrite(L6, HIGH);
-        digitalWrite(L7, HIGH);
-    }
-    else if (range >= 3500 && range <= 4000) {
-        digitalWrite(L1, HIGH);
-        digitalWrite(L2, HIGH);
-        digitalWrite(L3, HIGH);
-        digitalWrite(L4, HIGH);
-        digitalWrite(L5, HIGH);
-        digitalWrite(L6, HIGH);
-        digitalWrite(L7, HIGH);
-        digitalWrite(L8, HIGH);
-    }
-
-    delay(10); // ปรับความเร็วในการเปลี่ยนแปลง
+  switch(menuIndex) {
+    case 0:
+      ledsOn();  // เมนู 1 เปิด LED ทั้งหมด
+      break;
+    case 1:
+      ledsBlinkAlternating();  // เมนู 2 กระพริบ LED คู่/คี่ สลับกัน
+      break;
+    case 2:
+      ledsOneByOne();  // เมนู 3 สว่างทีละดวง
+      break;
+    case 3:
+      ledsOnInPairs();  // เมนู 4 เปิด LED คู่
+      break;
+    case 4:
+      ledsSweep();  // เมนู 5 สว่างจากดอกแรกไปดอกสุดท้ายแล้วดับกลับ
+      break;
+    case 5:
+      ledsBlinkAll();  // เมนู 6 กระพริบ LED ทั้งหมด
+      break;
+    default:
+      ledsOff();
+      break;
+  }
+  
+  lastSwitchState = switchState;  
 }
